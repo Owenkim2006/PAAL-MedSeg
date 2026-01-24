@@ -5,7 +5,7 @@ import glob
 
 from utils import print_dict_items,get_weight_path
 
-__Dataset__ = ['ACDC','SegTHOR','Liver','AMOS-CT','SegTHOR','MSD01_BrainTumour']
+__Dataset__ = ['ACDC','SegTHOR','Liver','AMOS-CT','SegTHOR','MSD01_BrainTumour', 'BraTS2023']
 __Segnet__ = ['unet','unet++','FPN','deeplabv3+']
 __Encoder_name__ = ['resnet18','resnet34','resnet50','resnet50_dropout','resnet50_naive']
 
@@ -21,7 +21,9 @@ json_path = {
     'Liver':'./dataset/Liver/Liver_Oar.json',
     'SegTHOR':'./dataset/SegTHOR/SegTHOR.json',
     'ACDC':'./dataset/ACDC/ACDC.json',
+    'AMOS-CT':'./dataset/AMOS-CT/AMOS-CT.json',
     'MSD01_BrainTumour':'./dataset/MSD01_BrainTumour/MSD01_BrainTumour.json',# multi-modality
+    'BraTS2023':'./dataset/BraTS2023/BraTS2023.json',
 }
 
 
@@ -30,11 +32,12 @@ SAMPLE_TIMES_MAP = {
     'SegTHOR':[[5,10,5],[5,20,15],[5,50,20]],
     'Liver':[[5,10,5],[5,20,15],[5,50,20]],
     'MSD01_BrainTumour':[[0.5,5,10],[0.5,10,15],[0.5,20,15]],
+    'BraTS2023':[[0.5,5,10],[0.5,10,15],[0.5,20,15]],
 }
 
 
 MODE = '2d-AL'
-DATASET = 'Liver' 
+DATASET = 'BraTS2023'
 
 NET_NAME = 'unet'
 ENCODER_NAME = 'resnet50'
@@ -47,9 +50,9 @@ SAMPLE_MODE = 'uniform'
 SAMPLE_STRATEGY = 'norm'
 SAMPLE_TIMES = 20
 
-VERSION = f'{NET_NAME}-{PREDICTOR_NAME}-{AL_MODE}-i{INIT_PERCENT}m{MAX_PERCENT}-{SAMPLE_MODE}-{SAMPLE_STRATEGY}'
+VERSION = 'paal-run4'
 
-DEVICE = '1'
+DEVICE = '0'
 # True if use internal pre-trained model
 # Must be True when pre-training and inference
 PRE_TRAINED = False
@@ -64,7 +67,7 @@ CURRENT_FOLD = 1
 GPU_NUM = len(DEVICE.split(','))
 
 
-with open(json_path[DATASET], 'r') as fp:
+with open(json_path[DATASET], 'r', encoding='utf-8-sig') as fp:
     info = json.load(fp)
 
 # Arguments for trainer initialization
@@ -106,10 +109,11 @@ INPUT_SHAPE_DICT = {
     'SegTHOR':(512,512),
     'Liver':(512,512),
     'MSD01_BrainTumour':(256,256),
+    'BraTS2023':(256,256),
 }
 
 INPUT_SHAPE = INPUT_SHAPE_DICT[DATASET]
-BATCH_SIZE = 64
+BATCH_SIZE = 16
 
 
 CKPT_PATH = './ckpt/{}/{}/{}/{}/fold{}'.format(DATASET,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
@@ -124,6 +128,7 @@ CHANNEL_DICT = {
     'SegTHOR':1,
     'Liver':1,
     'MSD01_BrainTumour':4,
+    'BraTS2023':4,
 }
 
 INIT_TRAINER = {
@@ -131,9 +136,9 @@ INIT_TRAINER = {
   'encoder_name':ENCODER_NAME,
   'predictor_name':PREDICTOR_NAME,
   'lr':1e-3, 
-  'n_epoch': 400,
+  'n_epoch': 100,
   'warmup_epoch':10,
-  'sample_inteval':5,
+  'sample_inteval':1,
   'channels':CHANNEL_DICT[DATASET],
   'num_classes':NUM_CLASSES,
   'target_names':TARGET_NAMES,
@@ -144,7 +149,7 @@ INIT_TRAINER = {
   'input_shape':INPUT_SHAPE,
   'crop':0,
   'batch_size':BATCH_SIZE,
-  'num_workers':4,
+  'num_workers':0,
   'device':DEVICE,
   'pre_trained':PRE_TRAINED,
   'ex_pre_trained':EX_PRE_TRAINED,
