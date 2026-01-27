@@ -1,12 +1,13 @@
 """
 Preprocess BraTS 2023 dataset for PAAL-MedSeg:
-Converts 3D MRI volumes (4 modalities + segmentation) into 2D HDF5 slices.
+Converts 3D MRI volumes (3 modalities + segmentation) into 2D HDF5 slices.
+Selected modalities: FLAIR, T1c (T1 contrast-enhanced), T2
 
 Each sample will be saved as:
   dataset/BraTS2023/2d_data-norm/<caseID>_<sliceIdx>.hdf5
 
 Each HDF5 file contains:
-  - image: (4, H, W) float32 array normalized to [0,1]
+  - image: (3, H, W) float32 array normalized to [0,1]
   - label: (H, W) segmentation mask
 """
 
@@ -18,6 +19,9 @@ from pathlib import Path
 from tqdm import tqdm
 import json
 from skimage.transform import resize
+
+# Selected modalities: FLAIR, T1c (T1 contrast-enhanced), T2
+SELECTED_MODALITIES = ['flair', 't1ce', 't2']
 
 
 def load_nifti_volume(nii_path):
@@ -49,8 +53,8 @@ def extract_2d_slices(image_4d, label_3d, case_id, output_dir, target_shape=(256
             continue  # skip empty slices
 
         # Resize slices
-        resized_img = np.zeros((4,) + target_shape, dtype=np.float32)
-        for c in range(4):
+        resized_img = np.zeros((3,) + target_shape, dtype=np.float32)
+        for c in range(3):
             resized_img[c] = resize(img_slice[c], target_shape, order=1, anti_aliasing=True)
 
         resized_lbl = resize(lbl_slice, target_shape, order=0, preserve_range=True, anti_aliasing=False)
@@ -181,7 +185,6 @@ def main():
             img_stack = np.stack([
                 load_nifti_volume(flair),
                 load_nifti_volume(t1ce),
-                load_nifti_volume(t1),
                 load_nifti_volume(t2),
             ], axis=0)
             lbl_data = load_nifti_volume(seg)

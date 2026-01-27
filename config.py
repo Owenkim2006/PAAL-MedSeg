@@ -128,7 +128,7 @@ CHANNEL_DICT = {
     'SegTHOR':1,
     'Liver':1,
     'MSD01_BrainTumour':4,
-    'BraTS2023':4,
+    'BraTS2023':3,
 }
 
 INIT_TRAINER = {
