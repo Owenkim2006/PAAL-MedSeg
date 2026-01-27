@@ -1,0 +1,14 @@
+{
+    "nii_path":"./ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData/",
+    "modality":"MR",
+    "annotation_num":3,
+    "annotation_list":[
+        "Necrotic_tumor",
+        "Edema",
+        "Enhancing_tumor"
+    ],
+    "2d_data":{
+        "save_path":"./dataset/BraTS2023/2d_data-norm",
+        "shape":[256,256]
+    }
+}
