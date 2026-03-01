@@ -50,7 +50,10 @@ SAMPLE_MODE = 'uniform'
 SAMPLE_STRATEGY = 'norm'
 SAMPLE_TIMES = 20
 
+
+## change this everytime
 VERSION = 'paal-run4'
+
 
 DEVICE = '0'
 # True if use internal pre-trained model

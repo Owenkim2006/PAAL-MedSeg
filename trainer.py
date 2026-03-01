@@ -429,20 +429,39 @@ class SemanticSeg(object):
                     state_dict = net.state_dict()
                     predictor_state_dict = predictor.state_dict()
 
+
+                # Single unified checkpoint with ALL submodule weights
+                unified_saver = {
+                    'epoch': epoch,
+                    'val_run_dice': val_run_dice[0],
+                    'seg_state_dict': state_dict,
+                    'predictor_state_dict': predictor_state_dict,
+                    'seg_optimizer': seg_optimizer.state_dict(),
+                    'predictor_optimizer': predictor_optimizer.state_dict(),
+                    # config metadata for verification
+                    'channels': self.channels,
+                    'num_classes': self.num_classes,
+                    'net_name': self.net_name,
+                    'encoder_name': self.encoder_name,
+                    'predictor_name': self.predictor_name,
+                }
+
+                unified_file_name = 'epoch={}-val_run_dice={:.5f}.pth'.format(
+                    epoch, val_run_dice[0])
+                unified_save_path = os.path.join(output_dir, unified_file_name)
+                print("Unified checkpoint saved as: %s" % unified_file_name)
+                torch.save(unified_saver, unified_save_path)
+
+                # Also keep the separate saves for backward compatibility
                 saver = {
                     'epoch': epoch,
                     'save_dir': segnet_output_dir,
                     'state_dict': state_dict,
-                    #'optimizer':seg_optimizer.state_dict(), #TODO resume
-                    #'sample_count':sample_count
                 }
-                
                 predictor_saver = {
                     'epoch': epoch,
                     'save_dir': predictor_output_dir,
                     'state_dict': predictor_state_dict,
-                    #'optimizer':predictor_optimizer.state_dict(), #TODO resume
-                    #'sample_count':sample_count
                 }
 
                 file_name = 'epoch={}-train_loss={:.5f}-train_dice={:.5f}-train_run_dice={:.5f}-val_loss={:.5f}-val_dice={:.5f}-val_run_dice={:.5f}.pth'.format(
@@ -457,7 +476,7 @@ class SemanticSeg(object):
                 torch.save(saver, save_path)
                 torch.save(predictor_saver, predictor_save_path)
 
-            #early stopping
+            # early stopping
             if early_stopping.early_stop:
                 print("Early stopping")
                 break
@@ -972,19 +991,38 @@ class SemanticSeg(object):
             return lr_scheduler
 
 
-    def _get_pre_trained_seg_net(self, weight_path, ckpt_point=True):
-        checkpoint = torch.load(weight_path)
-        self.net.load_state_dict(checkpoint['state_dict'])
-        if ckpt_point:
-            self.start_epoch = checkpoint['epoch'] + 1
-            self.metrics_threshold = eval(
-                weight_path.split('=')[-1].split('.')[0])
+def _get_pre_trained_seg_net(self, weight_path, ckpt_point=True):
+    checkpoint = torch.load(weight_path, map_location='cpu')
 
+    # Support unified checkpoint ('seg_state_dict') and legacy ('state_dict')
+    key = 'seg_state_dict' if 'seg_state_dict' in checkpoint else 'state_dict'
+    state_dict = checkpoint[key]
 
-    def _get_pre_trained_predictor(self, weight_path,ckpt_point=True):
-        checkpoint = torch.load(weight_path)
-        self.predictor.load_state_dict(checkpoint['state_dict'])
+    # Strip DataParallel 'module.' prefix if present
+    if all(k.startswith('module.') for k in state_dict.keys()):
+        state_dict = {k[len('module.'):]: v for k, v in state_dict.items()}
 
+    self.net.load_state_dict(state_dict, strict=True)
+    print(f"Segnet loaded from {weight_path} with strict=True ✅")
+
+    if ckpt_point:
+        self.start_epoch = checkpoint['epoch'] + 1
+        # Use saved val_run_dice directly instead of fragile filename parsing
+        self.metrics_threshold = checkpoint.get('val_run_dice', 0.)
+
+def _get_pre_trained_predictor(self, weight_path, ckpt_point=True):
+    checkpoint = torch.load(weight_path, map_location='cpu')
+
+    # Support unified checkpoint ('predictor_state_dict') and legacy ('state_dict')
+    key = 'predictor_state_dict' if 'predictor_state_dict' in checkpoint else 'state_dict'
+    state_dict = checkpoint[key]
+
+    # Strip DataParallel 'module.' prefix if present
+    if all(k.startswith('module.') for k in state_dict.keys()):
+        state_dict = {k[len('module.'):]: v for k, v in state_dict.items()}
+
+    self.predictor.load_state_dict(state_dict, strict=True)
+    print(f"Predictor loaded from {weight_path} with strict=True ✅")
 
 # computing tools
 
